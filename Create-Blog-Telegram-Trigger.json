@@ -1,0 +1,223 @@
+{
+  "name": "Telegram Triggered Blog Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [-720, 160],
+      "id": "394f40b0-8bb2-4c15-aec2-f170e7c5fe17",
+      "webhookId": "bdabb8a3-8e80-4b63-87d4-26ebfab365b6",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.duckduckgo.com/",
+        "options": {},
+        "queryParametersUi": {
+          "parameter": [
+            {
+              "name": "q",
+              "value": "={{$json[\"message\"][\"text\"]}}"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            }
+          ]
+        }
+      },
+      "name": "Web Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [-500, 160],
+      "id": "4fe507f1-94d9-4f41-945a-3673c8087965"
+    },
+    {
+      "parameters": {
+        "prompt": "=You are a professional technical writer for Medium. Write a short and beginner-friendly blog post on the topic: \"{{$node[\"Telegram Trigger\"].json[\"message\"][\"text\"]}}\".\n\nThe blog should:\n\n1. Start with a clear and engaging introduction that explains why the topic matters to developers or tech enthusiasts.\n2. Provide a concise and accurate explanation of the topic.\n3. Include at least one **practical code example** with step-by-step explanation (preferably in JavaScript, Python, or any common language depending on the topic).\n4. Use simple and clear language — avoid overly technical jargon.\n5. Provide tips, best practices, or a common mistake to avoid.\n6. End with a short conclusion summarizing the key takeaway.\n7. Format the blog in Markdown for Medium (use headers like `##`, bullet points `-`, and backticks for code).\n\nThe tone should be helpful, informative, and friendly — suitable for beginner to intermediate readers.\n\nWrite no more than 600–800 words on the topic: {{$node[\"Telegram Trigger\"].json[\"message\"][\"text\"]}}.",
+        "options": {
+          "maxTokens": 1000,
+          "temperature": 0.7
+        },
+        "requestOptions": {}
+      },
+      "name": "Medium Blog",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [-280, 160],
+      "id": "7421572c-2f63-45fa-8ea9-fb330bd9276d",
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "Timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "Topic",
+              "value": "={{ $node[\"Telegram Trigger\"].json[\"message\"][\"text\"] }}"
+            },
+            {
+              "name": "Content",
+              "value": "={{ $node[\"Medium Blog\"].json[\"choices\"][0][\"text\"] }}"
+            },
+            {
+              "name": "FileName",
+              "value": "={{ \"blog-\" + $node[\"Telegram Trigger\"].json[\"message\"][\"date\"] + \".pdf\" }}"
+            }
+          ]
+        }
+      },
+      "name": "Prepare Data for Sheets",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [100, 160],
+      "id": "prepareDataForSheets"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "append",
+        "sheetId": "1miM9FaA7UjZcOw-XicD_mdZBCKAoiT0ZJSJ74xRvdg4",
+        "options": {
+          "usePathForKeyRow": true
+        }
+      },
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [-60, -40],
+      "id": "194ba35c-0b0e-47f2-9c58-25a6b10acf68",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "fileContent": "={{ $node[\"Medium Blog\"].json[\"choices\"][0][\"text\"] || \"Default blog content here.\" }}",
+        "name": "={{ $node[\"Telegram Trigger\"].json[\"message\"][\"text\"] || \"blog-post\" }}.pdf",
+        "resolveData": true,
+        "options": {}
+      },
+      "name": "Save to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [-60, 160],
+      "id": "417a4993-7272-41f2-b154-c7e7b9b3514d",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"] }}",
+        "text": "={{ $node[\"Telegram Trigger\"].json[\"message\"][\"text\"] || \"blog-post\" }}.pdf is ready and uploaded to Google Drive.",
+        "additionalFields": {}
+      },
+      "name": "Send Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [-60, 360],
+      "id": "7d13d5ba-9f07-440e-b274-28f638579c22",
+      "webhookId": "238e04d3-1190-4f9e-aa05-85688f83cd58",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Web Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Search": {
+      "main": [
+        [
+          {
+            "node": "Medium Blog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Medium Blog": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data for Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save to Google Drive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data for Sheets": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cleaned-version",
+  "meta": {
+    "instanceId": "REDACTED"
+  },
+  "id": "O1F1m4ypMjTXiyJK",
+  "tags": []
+}
